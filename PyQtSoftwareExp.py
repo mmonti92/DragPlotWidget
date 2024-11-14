@@ -9,7 +9,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QWidget,
-    QPushButton,
     QCheckBox,
 )
 from PyQt6.QtCore import Qt
