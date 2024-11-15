@@ -17,7 +17,8 @@ from matplotlib.backends.backend_qt5agg import (
     NavigationToolbar2QT,
 )
 
-import Utilities as ut
+import DataAnalysis.ReadWriteFunctions as rw
+import DataAnalysis.math_functions as mt
 
 
 class MplCanvas(FigureCanvas):
@@ -108,7 +109,7 @@ class DragAndDropPlotter(QMainWindow):
     # Function to read and plot  file
     def plot_file(self, file_path):
         try:
-            data = ut.Reader(file_path)
+            data = rw.Reader(file_path)
 
             # Check if data has at least two columns for x and y
             if data.shape[1] < 2:
@@ -132,9 +133,9 @@ class DragAndDropPlotter(QMainWindow):
             )
             self.canvas.ax.set_title("Plot from data")
             self.canvas.ax.set_xlabel("t[fs]")
-            self.canvas.ax.set_ylabel("V[$\\mu V$]")
+            self.canvas.ax.set_ylabel("V[$\\mu$V]")
 
-            f, fft = ut.FFT(x, y, "t")
+            f, fft = mt.FFT(x, y, "t")
             self.canvas_fft.ax.plot(
                 f,
                 np.abs(fft),
@@ -142,7 +143,7 @@ class DragAndDropPlotter(QMainWindow):
                 # label=f"Processed ({file_path.split('/')[-1]})",
             )
             self.canvas_fft.ax.set_title("FFT")
-            self.canvas_fft.ax.set_xlabel("\\nu[THz]")
+            self.canvas_fft.ax.set_xlabel("$\\nu$[THz]")
             self.canvas_fft.ax.set_ylabel("FFT amplitude[Arb. Units]")
             self.canvas_fft.ax.set_xlim(0, 5)
 
