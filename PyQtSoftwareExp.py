@@ -13,8 +13,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 
-import DataAnalysis.ReadWriteFunctions as rw
-import DataAnalysis.math_functions as mt
+import Utilities as ut
 import PlotWidgets as pw
 
 
@@ -70,50 +69,63 @@ class DragAndDropPlotter(QMainWindow):
     def dropEvent(self, event):
         urls = event.mimeData().urls()
         if urls:
-            file_path = urls[
-                0
-            ].toLocalFile()  # Get the file path of the dropped file
-            self.plot_file(file_path)
+            valid_files = []
+            for url in urls:
+                file_path = url.toLocalFile()
+                if file_path.endswith(".txt"):
+                    valid_files.append(file_path)
+                else:
+                    self.label.setText(f"Invalid file skipped: {file_path}")
+            if valid_files:
+                self.plot_files(valid_files)
+            else:
+                self.label.setText("No valid files were dropped.")
 
-    def plot_file(self, file_path):
+    def plot_files(self, file_paths):
         try:
-            data = rw.Reader(file_path)
+            for file_path in file_paths:
+                data = ut.Reader(file_path)
 
-            # Check if data has at least two columns for x and y
-            if data.shape[1] < 2:
-                self.label.setText(
-                    "File must have at least two columns for x and y data."
+                # Check if data has at least two columns for x and y
+                if data.shape[1] < 2:
+                    self.label.setText(
+                        "File must have at least two columns for x and y data."
+                    )
+                    return
+
+                x = data[0]  # Assume first column as x-axis
+                y = data[1]  # Assume second column as y-axis
+
+                # Clear the canvas depending on persistence and plot new data
+                if self.clear_plot:
+                    self.plot_1.clear_plot()
+                    self.plot_fft.clear_plot()
+                    self.clear_plot = False
+
+                self.plot_1.plot_data(
+                    x,
+                    y,
+                    label=f"{file_path.split('/')[-1]}",
                 )
-                return
+                self.plot_1.canvas.ax.set_title("Plot from data")
+                self.plot_1.canvas.ax.set_xlabel("t[fs]")
+                self.plot_1.canvas.ax.set_ylabel("V[$\\mu$V]")
 
-            x = data[0]  # Assume first column as x-axis
-            y = data[1]  # Assume second column as y-axis
+                # FFT & plotting
+                fft = np.fft.fft(y)[: len(y) // 2]
+                f = np.fft.fftfreq(x.size, np.abs(x[1] - x[0]))[: len(y) // 2]
+                self.plot_fft.plot_data(f, np.abs(fft), label=None)
 
-            # Clear the canvas depending on persistence and plot new data
-            if self.clear_plot:
-                self.plot_1.clear_plot()
-                self.plot_fft.clear_plot()
+                self.plot_fft.canvas.ax.set_title("FFT")
+                self.plot_fft.canvas.ax.set_xlabel("$\\nu$[THz]")
+                self.plot_fft.canvas.ax.set_ylabel(
+                    "FFT amplitude[Arb. Units]"
+                )
+                self.plot_fft.canvas.ax.set_xlim(0, 5)
+                self.plot_fft.canvas.ax.get_legend().remove()
 
-            self.plot_1.plot_data(
-                x,
-                y,
-                label=f"{file_path.split('/')[-1]}",
-            )
-            self.plot_1.canvas.ax.set_title("Plot from data")
-            self.plot_1.canvas.ax.set_xlabel("t[fs]")
-            self.plot_1.canvas.ax.set_ylabel("V[$\\mu$V]")
-
-            # FFT & plotting
-            f, fft = mt.FFT(x, y, "t")
-            self.plot_fft.plot_data(f, np.abs(fft), label=None)
-
-            self.plot_fft.canvas.ax.set_title("FFT")
-            self.plot_fft.canvas.ax.set_xlabel("$\\nu$[THz]")
-            self.plot_fft.canvas.ax.set_ylabel("FFT amplitude[Arb. Units]")
-            self.plot_fft.canvas.ax.set_xlim(0, 5)
-            self.plot_fft.canvas.ax.get_legend().remove()
-
-            self.label.setText(f"Plotting data from: {file_path}")
+                self.label.setText(f"Plotting data from: {file_path}")
+            self.clear_plot = True
         except Exception as e:
             self.label.setText(f"Failed to plot data: {e}")
 
